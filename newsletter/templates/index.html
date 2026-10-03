@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ site_name }} — Latest{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>{{ site_name }}</h1>
+  <p class="lede">{{ tagline }}</p>
+</section>
+
+<section class="post-list">
+  <h2>Latest posts</h2>
+  {% if posts %}
+    <ul>
+    {% for post in posts %}
+      <li>
+        <h3><a href="/posts/{{ post.slug }}">{{ post.title }}</a></h3>
+        <p class="meta">{{ post.date|fmtdate }}{% if post.author %} · {{ post.author }}{% endif %}</p>
+        {% if post.summary %}<p>{{ post.summary }}</p>{% endif %}
+      </li>
+    {% endfor %}
+    </ul>
+  {% else %}
+    <p>No posts yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

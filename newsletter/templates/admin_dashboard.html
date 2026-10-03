@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin - Newsletter</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .admin { max-width: 1100px; margin: 0 auto; padding: 24px 20px; }
+    .admin header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .admin header h1 { margin: 0; font-size: 22px; }
+    .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; flex-wrap: wrap; }
+    .tabs button { background: transparent; border: 0; border-bottom: 2px solid transparent; padding: 10px 16px; cursor: pointer; color: var(--muted); font-size: 14px; }
+    .tabs button.active { color: var(--fg); border-bottom-color: var(--accent); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .stat { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+    .stat .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .stat .value { font-size: 26px; font-weight: 600; margin-top: 4px; }
+    .stat.ok .value { color: var(--accent-2); }
+    .stat.warn .value { color: #d97706; }
+    .stat.err .value { color: #dc2626; }
+    table.data { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    table.data th, table.data td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: top; }
+    table.data th { background: #f9fafb; font-weight: 600; }
+    table.data tr:last-child td { border-bottom: 0; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+    .pill.ok { background: #ecfdf5; color: #065f46; }
+    .pill.bad { background: #fef2f2; color: #991b1b; }
+    .pill.pending { background: #eff6ff; color: #1e40af; }
+    .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+    .toolbar input, .toolbar select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font: inherit; }
+    .toolbar button { padding: 6px 12px; background: var(--accent); color: #fff; border: 0; border-radius: 6px; cursor: pointer; font: inherit; }
+    .toolbar button.ghost { background: #fff; color: var(--fg); border: 1px solid var(--border); }
+    .toolbar button.danger { background: #dc2626; }
+    pre.error { background: #fef2f2; color: #991b1b; padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 12px; }
+    .actions button { padding: 4px 8px; font-size: 12px; border-radius: 4px; border: 1px solid var(--border); background: #fff; cursor: pointer; margin-right: 4px; }
+    .actions button:hover { background: #f3f4f6; }
+    .actions button.danger { color: #dc2626; border-color: #fecaca; }
+    .meta-line { color: var(--muted); font-size: 12px; }
+    .empty { padding: 24px; text-align: center; color: var(--muted); background: #fff; border: 1px dashed var(--border); border-radius: 8px; }
+  </style>
+</head>
+
+<body>
+  <div class="admin">
+    <header>
+      <h1>Newsletter Admin</h1>
+      <form method="post" action="/admin/logout" style="margin:0;">
+        <button type="submit" class="ghost">Sign out</button>
+      </form>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="overview">Overview</button>
+      <button class="tab" data-tab="subscribers">Subscribers</button>
+      <button class="tab" data-tab="deliveries">Deliveries</button>
+      <button class="tab" data-tab="posts">Posts</button>
+      <button class="tab" data-tab="actions">Actions</button>
+    </nav>
+
+    <section class="tab-panel active" id="tab-overview">
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat"><div class="label">Loading</div><div class="value">...</div></div>
+      </div>
+      <div class="meta-line" id="stats-meta"></div>
+    </section>
+
+    <section class="tab-panel" id="tab-subscribers">
+      <div class="toolbar">
+        <input id="sub-q" type="search" placeholder="Search email">
+        <select id="sub-confirmed">
+          <option value="">All</option>
+          <option value="true">Confirmed</option>
+          <option value="false">Pending</option>
+        </select>
+        <button id="sub-refresh" class="ghost">Refresh</button>
+        <span class="meta-line" id="sub-meta"></span>
+      </div>
+      <div id="sub-table"></div>
+    </section>
+
+    <section class="tab-panel" id="tab-deliveries">
+      <div class="toolbar">
+        <input id="del-slug" type="search" placeholder="post slug (optional)">
+        <select id="del-status">
+          <option value="">All statuses</option>
+          <option value="sent">sent</option>
+          <option value="failed">failed</option>
+        </select>
+        <select id="del-since">
+          <option value="">Any time</option>
+          <option value="1">Last hour</option>
+          <option value="24">Last 24h</option>
+          <option value="168">Last week</option>
+        </select>
+        <button id="del-refresh" class="ghost">Refresh</button>
+        <span class="meta-line" id="del-meta"></span>
+      </div>
+      <div id="del-table"></div>
+    </section>
+
+    <section class="tab-panel" id="tab-posts">
+      <div class="toolbar">
+        <button id="post-refresh" class="ghost">Refresh</button>
+        <span class="meta-line" id="post-meta"></span>
+      </div>
+      <div id="post-list"></div>
+    </section>
+
+    <section class="tab-panel" id="tab-actions">
+      <div class="toolbar">
+        <button id="sync-now">Trigger git sync now</button>
+        <button id="resync-confirmed-count" class="ghost">Recount confirmed</button>
+      </div>
+      <div id="action-output"></div>
+    </section>
+  </div>
+
+  <script>
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => document.querySelectorAll(s);
+
+    $$('.tab').forEach(btn => btn.addEventListener('click', () => {
+      $$('.tab').forEach(b => b.classList.remove('active'));
+      $$('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      $('#tab-' + btn.dataset.tab).classList.add('active');
+      const t = btn.dataset.tab;
+      if (t === 'overview') loadStats();
+      if (t === 'subscribers') loadSubscribers();
+      if (t === 'deliveries') loadDeliveries();
+      if (t === 'posts') loadPosts();
+    }));
+
+    function esc(s) {
+      return (s ?? '').toString().replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+    function showError(container, err) {
+      container.innerHTML = '<pre class="error">' + esc(err.message || err) + '</pre>';
+    }
+
+    async function loadStats() {
+      try {
+        const r = await fetch('/admin/api/stats');
+        if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + (await r.text()));
+        const s = await r.json();
+        const grid = $('#stats-grid');
+        grid.innerHTML = '';
+        const card = (label, value, cls) =>
+          '<div class="stat ' + (cls||'') + '"><div class="label">' + label + '</div><div class="value">' + value + '</div></div>';
+        grid.insertAdjacentHTML('beforeend', card('Subscribers - total', s.subscribers.total));
+        grid.insertAdjacentHTML('beforeend', card('Subscribers - confirmed', s.subscribers.confirmed, 'ok'));
+        grid.insertAdjacentHTML('beforeend', card('Subscribers - pending', s.subscribers.pending, 'warn'));
+        grid.insertAdjacentHTML('beforeend', card('Deliveries - sent', s.deliveries.sent, 'ok'));
+        const failCls = s.deliveries.failed ? 'err' : '';
+        grid.insertAdjacentHTML('beforeend', card('Deliveries - failed', s.deliveries.failed, failCls));
+        grid.insertAdjacentHTML('beforeend', card('Deliveries - today', s.deliveries.today));
+        grid.insertAdjacentHTML('beforeend', card('Posts on disk', s.content.posts));
+        $('#stats-meta').textContent =
+          'content_dir=' + s.content.content_dir + ' - git=' + s.content.git_repo_url +
+          ' - server_now=' + s.server.now;
+      } catch (e) { showError($('#stats-grid'), e); }
+    }
+
+    async function loadSubscribers() {
+      const q = $('#sub-q').value;
+      const c = $('#sub-confirmed').value;
+      const params = new URLSearchParams();
+      if (q) params.set('q', q);
+      if (c !== '') params.set('confirmed', c);
+      params.set('limit', '100');
+      try {
+        const r = await fetch('/admin/api/subscribers?' + params);
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const data = await r.json();
+        $('#sub-meta').textContent = data.total + ' matching';
+        const cont = $('#sub-table');
+        if (!data.items.length) { cont.innerHTML = '<div class="empty">No subscribers.</div>'; return; }
+        let html = '<table class="data"><thead><tr><th>ID</th><th>Email</th><th>Status</th><th>Created</th><th>Confirmed</th><th>Actions</th></tr></thead><tbody>';
+        for (const it of data.items) {
+          const pill = it.confirmed ? '<span class="pill ok">confirmed</span>'
+                       : '<span class="pill pending">pending</span>';
+          html += '<tr>'
+            + '<td>' + it.id + '</td>'
+            + '<td>' + esc(it.email) + '</td>'
+            + '<td>' + pill + '</td>'
+            + '<td>' + esc(it.created_at || '') + '</td>'
+            + '<td>' + esc(it.confirmed_at || '-') + '</td>'
+            + '<td class="actions">'
+            + (it.confirmed ? '' : '<button onclick="confirmSub(' + it.id + ')">Confirm</button>')
+            + '<button class="danger" onclick="deleteSub(' + it.id + ')">Delete</button>'
+            + '</td></tr>';
+        }
+        html += '</tbody></table>';
+        cont.innerHTML = html;
+      } catch (e) { showError($('#sub-table'), e); }
+    }
+    window.confirmSub = async (id) => {
+      if (!confirm('Mark subscriber ' + id + ' as confirmed?')) return;
+      await fetch('/admin/api/subscribers/' + id + '/confirm', { method: 'POST' });
+      loadSubscribers();
+    };
+    window.deleteSub = async (id) => {
+      if (!confirm('Delete subscriber ' + id + ' permanently?')) return;
+      await fetch('/admin/api/subscribers/' + id, { method: 'DELETE' });
+      loadSubscribers();
+    };
+    $('#sub-refresh').addEventListener('click', loadSubscribers);
+    $('#sub-q').addEventListener('input', () => { clearTimeout(window.__subT); window.__subT = setTimeout(loadSubscribers, 250); });
+    $('#sub-confirmed').addEventListener('change', loadSubscribers);
+
+    async function loadDeliveries() {
+      const params = new URLSearchParams();
+      const slug = $('#del-slug').value; if (slug) params.set('post_slug', slug);
+      const status = $('#del-status').value; if (status) params.set('status', status);
+      const since = $('#del-since').value; if (since) params.set('since_hours', since);
+      params.set('limit', '100');
+      try {
+        const r = await fetch('/admin/api/deliveries?' + params);
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const data = await r.json();
+        $('#del-meta').textContent = data.total + ' matching';
+        const cont = $('#del-table');
+        if (!data.items.length) { cont.innerHTML = '<div class="empty">No deliveries.</div>'; return; }
+        let html = '<table class="data"><thead><tr><th>ID</th><th>When</th><th>Post</th><th>Email</th><th>Status</th><th>Error</th></tr></thead><tbody>';
+        for (const it of data.items) {
+          const cls = it.status === 'sent' ? 'ok' : 'bad';
+          html += '<tr>'
+            + '<td>' + it.id + '</td>'
+            + '<td>' + esc(it.sent_at) + '</td>'
+            + '<td><code>' + esc(it.post_slug) + '</code></td>'
+            + '<td>' + esc(it.email || ('#' + it.subscriber_id)) + '</td>'
+            + '<td><span class="pill ' + cls + '">' + esc(it.status) + '</span></td>'
+            + '<td>' + esc((it.error || '').slice(0, 200)) + '</td>'
+            + '</tr>';
+        }
+        html += '</tbody></table>';
+        cont.innerHTML = html;
+      } catch (e) { showError($('#del-table'), e); }
+    }
+    $('#del-refresh').addEventListener('click', loadDeliveries);
+    $('#del-slug').addEventListener('input', () => { clearTimeout(window.__delT); window.__delT = setTimeout(loadDeliveries, 250); });
+    $('#del-status').addEventListener('change', loadDeliveries);
+    $('#del-since').addEventListener('change', loadDeliveries);
+
+    async function loadPosts() {
+      try {
+        const r = await fetch('/admin/api/posts');
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const data = await r.json();
+        $('#post-meta').textContent = data.total + ' posts';
+        const cont = $('#post-list');
+        if (!data.items.length) { cont.innerHTML = '<div class="empty">No posts found.</div>'; return; }
+        let html = '<table class="data"><thead><tr><th>Slug</th><th>Title</th><th>Date</th><th>Modified</th><th>Author</th></tr></thead><tbody>';
+        for (const p of data.items) {
+          html += '<tr>'
+            + '<td><code>' + esc(p.slug) + '</code></td>'
+            + '<td><a href="' + esc(p.url) + '" target="_blank">' + esc(p.title) + '</a></td>'
+            + '<td>' + esc(p.date || '-') + '</td>'
+            + '<td>' + esc(p.modified_at || '-') + '</td>'
+            + '<td>' + esc(p.author || '-') + '</td>'
+            + '</tr>';
+        }
+        html += '</tbody></table>';
+        cont.innerHTML = html;
+      } catch (e) { showError($('#post-list'), e); }
+    }
+    $('#post-refresh').addEventListener('click', loadPosts);
+
+    $('#sync-now').addEventListener('click', async () => {
+      const out = $('#action-output');
+      out.innerHTML = 'Syncing...';
+      try {
+        const r = await fetch('/admin/api/sync', { method: 'POST' });
+        const data = await r.json();
+        out.innerHTML = '<pre>' + esc(JSON.stringify(data, null, 2)) + '</pre>';
+      } catch (e) { showError(out, e); }
+    });
+    $('#resync-confirmed-count').addEventListener('click', loadStats);
+
+    loadStats();
+  </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — {{ site_name }}{% endblock %}
+{% block content %}
+<section class="message">
+  <h1>{{ title }}</h1>
+  <p>{{ message }}</p>
+  {% if action_url %}
+    <p><a class="button" href="{{ action_url }}">{{ action_label or 'Continue' }}</a></p>
+  {% endif %}
+  <p><a href="/">&larr; Back to home</a></p>
+</section>
+{% endblock %}

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin login — {{ site_name }}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="login-body">
+  <main class="login-card">
+    <h1>Admin login</h1>
+    <p class="muted">Enter the <code>ADMIN_TOKEN</code> configured on the server.</p>
+    {% if error %}<p class="flash error">{{ error }}</p>{% endif %}
+    <form method="post" action="/admin/login">
+      <label for="token">Token</label>
+      <input type="password" id="token" name="token" autofocus required>
+      <button type="submit">Sign in</button>
+    </form>
+    <p class="muted"><a href="/">&larr; Back to site</a></p>
+  </main>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ site_name }}{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="site-title" href="/">{{ site_name }}</a>
+      <nav>
+        <a href="/">Latest</a>
+        <a href="/archive">Archive</a>
+        <a href="#subscribe">Subscribe</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <form id="subscribe" class="subscribe" method="post" action="/subscribe">
+        <label for="email">Subscribe to {{ site_name }}:</label>
+        <input type="email" id="email" name="email" placeholder="you@example.com" required>
+        <button type="submit">Subscribe</button>
+      </form>
+      {% if flash %}
+        <p class="flash {{ flash.kind }}">{{ flash.message }}</p>
+      {% endif %}
+      <p class="muted">Powered by a self-hosted Git newsletter. <a href="/feed.xml">RSS</a></p>
+    </div>
+  </footer>
+</body>
+</html>
