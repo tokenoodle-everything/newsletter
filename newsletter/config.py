@@ -68,6 +68,12 @@ class Settings(BaseSettings):
     # Leave empty to disable the admin area entirely.
     admin_token: str = ""
 
+    # --- Broadcast behaviour ---
+    # If true, every webhook re-sends every post regardless of whether
+    # we've already dispatched it. Useful for first-time setup / manual
+    # re-blasts. The normal flow dedupes by post content hash.
+    force_rebroadcast: bool = False
+
     # --- Server ---
     host: str = "127.0.0.1"
     port: int = 8000

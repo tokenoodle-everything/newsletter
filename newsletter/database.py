@@ -37,6 +37,13 @@ CREATE TABLE IF NOT EXISTS deliveries (
     FOREIGN KEY (subscriber_id) REFERENCES subscribers(id)
 );
 CREATE INDEX IF NOT EXISTS idx_deliveries_post ON deliveries(post_slug);
+
+CREATE TABLE IF NOT EXISTS dispatched_posts (
+    slug           TEXT PRIMARY KEY,
+    content_hash   TEXT NOT NULL,
+    sent_at        TEXT NOT NULL,
+    recipients     INTEGER NOT NULL DEFAULT 0
+);
 """
 
 
@@ -195,3 +202,29 @@ async def search_subscribers(
         [*params, limit, offset],
     )
     return list(await cur.fetchall()), total
+
+
+async def get_dispatched(conn: aiosqlite.Connection, slug: str) -> Optional[aiosqlite.Row]:
+    cur = await conn.execute(
+        "SELECT * FROM dispatched_posts WHERE slug = ?", (slug,)
+    )
+    return await cur.fetchone()
+
+
+async def record_dispatched(
+    conn: aiosqlite.Connection,
+    slug: str,
+    content_hash: str,
+    recipients: int,
+) -> None:
+    await conn.execute(
+        """
+        INSERT INTO dispatched_posts (slug, content_hash, sent_at, recipients)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(slug) DO UPDATE SET
+            content_hash = excluded.content_hash,
+            sent_at = excluded.sent_at,
+            recipients = excluded.recipients
+        """,
+        (slug, content_hash, utcnow_iso(), recipients),
+    )

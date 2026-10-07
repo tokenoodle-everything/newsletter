@@ -354,6 +354,26 @@ async def trigger_sync():
     }
 
 
+@api_router.post("/posts/{slug}/rebroadcast")
+async def rebroadcast_post(slug: str):
+    """Forget a post's dispatched-hash record so the next webhook re-sends it."""
+    async with get_conn() as conn:
+        cur = await conn.execute(
+            "DELETE FROM dispatched_posts WHERE slug = ?", (slug,)
+        )
+    if cur.rowcount == 0:
+        raise HTTPException(status_code=404, detail="No dispatched record for this slug")
+    return {"ok": True, "slug": slug, "cleared": True}
+
+
+@api_router.post("/posts/rebroadcast-all")
+async def rebroadcast_all():
+    """Clear every dispatched-hash record so the next webhook re-sends everything."""
+    async with get_conn() as conn:
+        cur = await conn.execute("DELETE FROM dispatched_posts")
+    return {"ok": True, "cleared": cur.rowcount}
+
+
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------

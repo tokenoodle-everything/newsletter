@@ -112,6 +112,7 @@
     <section class="tab-panel" id="tab-actions">
       <div class="toolbar">
         <button id="sync-now">Trigger git sync now</button>
+        <button id="rebroadcast-all" class="danger">Re-broadcast everything</button>
         <button id="resync-confirmed-count" class="ghost">Recount confirmed</button>
       </div>
       <div id="action-output"></div>
@@ -276,6 +277,16 @@
       out.innerHTML = 'Syncing...';
       try {
         const r = await fetch('/admin/api/sync', { method: 'POST' });
+        const data = await r.json();
+        out.innerHTML = '<pre>' + esc(JSON.stringify(data, null, 2)) + '</pre>';
+      } catch (e) { showError(out, e); }
+    });
+    $('#rebroadcast-all').addEventListener('click', async () => {
+      const out = $('#action-output');
+      if (!confirm('Forget every dispatched-hash and re-send all posts to every confirmed subscriber?')) return;
+      out.innerHTML = 'Clearing dispatched records...';
+      try {
+        const r = await fetch('/admin/api/posts/rebroadcast-all', { method: 'POST' });
         const data = await r.json();
         out.innerHTML = '<pre>' + esc(JSON.stringify(data, null, 2)) + '</pre>';
       } catch (e) { showError(out, e); }

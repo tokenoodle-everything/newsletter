@@ -103,6 +103,19 @@ When you push a new `.md` file, GitHub will hit the webhook, the server
 will pull the latest content and email all confirmed subscribers about the
 new post.
 
+### Broadcast dedupe
+
+The webhook tracks each post's content hash in a `dispatched_posts`
+SQLite table. On every push it only emails **posts whose content has
+changed since the last successful send** (or that have never been sent).
+Editing a post and re-pushing will re-send to all confirmed subscribers.
+
+To force a re-blast:
+
+- One post: `POST /admin/api/posts/{slug}/rebroadcast` (token auth)
+- Everything: `POST /admin/api/posts/rebroadcast-all`
+- All pushes (env): set `NEWSLETTER_FORCE_REBROADCAST=true`
+
 ## Local development tips
 
 - Set `MAIL_BACKEND=http` to a request-capture service like

@@ -22,11 +22,13 @@ from .database import (
     confirm_subscriber,
     count_confirmed,
     get_conn,
+    get_dispatched,
     get_subscriber_by_email,
     get_subscriber_by_id,
     init_db,
     list_confirmed,
     record_delivery,
+    record_dispatched,
     unsubscribe,
 )
 from .emails import confirm_email, new_post_email
@@ -365,20 +367,43 @@ async def github_webhook(request: Request):
     posts = discover_posts(settings.content_path)
     log.info("After sync, %d posts in %s", len(posts), settings.content_path)
 
+    force = settings.force_rebroadcast
     results = []
     for post in posts:
-        try:
-            if post.source_path and post.source_path.exists():
-                mtime = datetime.fromtimestamp(post.source_path.stat().st_mtime)
-                age = (datetime.now() - mtime).total_seconds()
-                if age > 3600:
-                    continue
-        except OSError:
-            pass
+        digest = _post_content_hash(post)
+        async with get_conn() as conn:
+            prev = await get_dispatched(conn, post.slug)
+        if not force and prev is not None and prev["content_hash"] == digest:
+            log.info(
+                "Skip '%s' — already dispatched (hash %s) at %s",
+                post.slug, digest[:8], prev["sent_at"],
+            )
+            continue
+        log.info(
+            "Dispatching '%s' (hash %s, force=%s, had_prev=%s)",
+            post.slug, digest[:8], force, prev is not None,
+        )
         sent, failed = await _broadcast_new_post(post)
-        results.append({"slug": post.slug, "sent": sent, "failed": failed})
+        async with get_conn() as conn:
+            await record_dispatched(conn, post.slug, digest, recipients=sent)
+        results.append({
+            "slug": post.slug,
+            "sent": sent,
+            "failed": failed,
+            "recipients": sent,
+            "forced": force,
+        })
 
     return {"ok": True, "delivered": results}
+
+
+def _post_content_hash(post: Post) -> str:
+    """Stable hash of the post's meaningful content (frontmatter + body)."""
+    h = hashlib.md5()
+    h.update((post.title or "").encode("utf-8"))
+    h.update(b"\x00")
+    h.update(post.raw_markdown.encode("utf-8"))
+    return h.hexdigest()
 
 
 # ---------------------------------------------------------------------------
